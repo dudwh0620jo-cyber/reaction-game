@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+
+<!-- ✅ 모바일 대응 핵심 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>도오페페케 그리고 천유성 드가를 드가</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    text-align: center;
+    margin-top: 30px;
+  }
+
+  input {
+    padding: 10px;
+    margin: 5px;
+    font-size: 16px;
+    width: 80%;
+    max-width: 300px;
+  }
+
+  button {
+    padding: 10px 18px;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 5px;
+    touch-action: manipulation;
+  }
+
+  #gameBox {
+    width: 90vw;
+    max-width: 420px;
+    height: 220px;
+    background: #ccc;
+    margin: 20px auto;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  #ranking {
+    width: 90vw;
+    max-width: 420px;
+    margin: 30px auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: left;
+  }
+
+  #myResetBtn {
+    margin-top: 10px;
+    background: #e67e22;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    width: 100%;
+  }
+
+  ol {
+    padding-left: 20px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<h1>⚡ 도오페페케 그리고 천유성 드가를 드가</h1>
+
+<!-- 로그인 -->
+<div id="loginBox">
+  <h3>🔐 로그인</h3>
+  <input id="username" placeholder="이름">
+  <input id="password" type="password" placeholder="비밀번호">
+  <br>
+  <button onclick="login()">로그인 / 회원가입</button>
+  <div id="loginMsg"></div>
+</div>
+
+<!-- 게임 -->
+<div id="gameSection">
+  <p id="welcome"></p>
+  <div id="gameBox">시작 버튼을 누르세요</div>
+  <button onclick="startGame()">시작</button>
+  <div id="result"></div>
+</div>
+
+<!-- 랭킹 -->
+<div id="ranking">
+  <h3>🏆 랭킹 TOP 10</h3>
+  <ol id="rankingList"></ol>
+  <button id="myResetBtn" onclick="resetMyRecords()">🗑 내 기록만 초기화</button>
+</div>
+
+<script>
+  const loginBox = document.getElementById("loginBox");
+  const gameBox = document.getElementById("gameBox");
+  const rankingList = document.getElementById("rankingList");
+  const welcome = document.getElementById("welcome");
+  const result = document.getElementById("result");
+  const loginMsg = document.getElementById("loginMsg");
+
+  let currentUser = null;
+  let startTime = 0;
+  let waiting = false;
+  let ready = false;
+  let timeoutId;
+
+  let users = JSON.parse(localStorage.getItem("users")) || {};
+  let rankings = JSON.parse(localStorage.getItem("reactionRankings")) || [];
+
+  function login() {
+    const name = username.value.trim();
+    const pw = password.value;
+
+    if (!name || !pw) {
+      loginMsg.textContent = "이름과 비밀번호를 입력하세요.";
+      return;
+    }
+
+    if (!users[name]) {
+      users[name] = { password: pw };
+      localStorage.setItem("users", JSON.stringify(users));
+    } else if (users[name].password !== pw) {
+      loginMsg.textContent = "❌ 비밀번호가 틀렸습니다.";
+      return;
+    }
+
+    currentUser = name;
+    loginBox.style.display = "none";
+    gameBox.style.display = "flex";
+    welcome.textContent = `👋 ${name} 님 환영합니다`;
+  }
+
+  function startGame() {
+    result.textContent = "";
+    ready = false;
+    waiting = true;
+    gameBox.style.background = "#e74c3c";
+    gameBox.textContent = "기다리세요...";
+
+    const delay = Math.random() * 3000 + 2000;
+
+    timeoutId = setTimeout(() => {
+      gameBox.style.background = "#2ecc71";
+      gameBox.textContent = "지금 터치!";
+      startTime = Date.now();
+      ready = true;
+      waiting = false;
+    }, delay);
+  }
+
+  gameBox.addEventListener("click", () => {
+    if (waiting) {
+      clearTimeout(timeoutId);
+      gameBox.style.background = "#ccc";
+      gameBox.textContent = "너무 빨랐어요!";
+      result.textContent = "❌ 실패";
+      waiting = false;
+    } else if (ready) {
+      const time = Date.now() - startTime;
+      saveRanking(time);
+      gameBox.style.background = "#ccc";
+      gameBox.textContent = "완료!";
+      result.textContent = `🎉 ${time} ms`;
+      ready = false;
+    }
+  });
+
+  function saveRanking(time) {
+    rankings.push({
+      user: currentUser,
+      time,
+      date: new Date().toLocaleString()
+    });
+
+    rankings.sort((a, b) => a.time - b.time);
+    rankings = rankings.slice(0, 10);
+
+    localStorage.setItem("reactionRankings", JSON.stringify(rankings));
+    renderRanking();
+  }
+
+  function resetMyRecords() {
+    if (!confirm("내 기록만 초기화할까요?")) return;
+    rankings = rankings.filter(r => r.user !== currentUser);
+    localStorage.setItem("reactionRankings", JSON.stringify(rankings));
+    renderRanking();
+    result.textContent = "🗑 내 기록이 삭제되었습니다.";
+  }
+
+  function renderRanking() {
+    rankingList.innerHTML = "";
+    rankings.forEach(r => {
+      const li = document.createElement("li");
+      li.textContent = `${r.user} · ${r.time} ms · ${r.date}`;
+      rankingList.appendChild(li);
+    });
+  }
+
+  renderRanking();
+</script>
+
+</body>
+</html>
